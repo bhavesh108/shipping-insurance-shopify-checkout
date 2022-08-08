@@ -1,0 +1,196 @@
+<script>
+  $(document).ready(function(){
+    function setCookie(cname,cvalue,exdays) {
+      var d = new Date();
+      d.setTime(d.getTime() + (exdays*24*60*60*1000));
+      var expire = "expire=" + d.toGMTString();
+      document.cookie = cname + "=" + cvalue + ";" + expire + ";path=/";
+    }
+    function getCookie(cname) {
+      var name = cname + "=";
+      var decodedCookie = decodeURIComponent(document.cookie);
+      var ca = decodedCookie.split(';');
+      for(var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+        }
+      }
+      return "";
+    }
+
+    var addcatshipping=true;
+    // Here, shipping_product contains a variant ids of created products in shopify admin, Please see images, Products.jpg
+    var shipping_product, shipping_price;
+    shipping_product = "";
+    shipping_price = "";
+    {% if checkout.line_items_subtotal_price >= 0 and checkout.line_items_subtotal_price <= 5000 %}
+      shipping_product = 39882881532070;
+      shipping_price = "0.98";
+    {% elsif checkout.line_items_subtotal_price >= 5000 and checkout.line_items_subtotal_price <= 7500 %}
+      shipping_product = 40118778593446;
+      shipping_price = "1.98";
+    {% else %}
+      shipping_product = 40118850519206;
+      shipping_price = "2.98";
+    {% endif %}
+
+    {% for line in checkout.line_items %}
+      if({{ line.variant_id }} === shipping_product) {
+          addcatshipping=false;
+      }
+    {%endfor%}
+    if(addcatshipping && getCookie('shippingupsell') != 'remove' ) {
+      jQuery.post('shopifyURL/cart/add.js', {
+        items: [
+          {
+            quantity: 1,
+            id: shipping_product
+          }
+        ]
+      },
+       function(){
+        window.location='/checkout';
+      });    
+    }
+    var html='';
+    html+="<div class='shipping-upsell-row'>";
+    html+="<div class='shipping-upsell-col-1'><img src='https://cdn.shopify.com/s/files/1/1310/4295/files/favicon_lane_copy_36x.png'  /> </div>";
+    html+="<div class='shipping-upsell-col-2'>Shipping Protection<span>From Damage,Loss & Theft for "+shipping_price+"  </span></div>";
+    html+="<div class='shipping-upsell-col-3' id='tooltip_for_inspolicy'>";
+    html+="<label class='container-shipping-checkout'>";
+    if(addcatshipping) {
+      html+=" <input type='checkbox' id='checkbox-shipping' />";
+    } else {
+      html+=" <input type='checkbox' id='checkbox-shipping' checked='checked' />";
+    }
+    html+="<span class='checkmark'></span>"
+    html+="</label></div>";
+    html+="</div>";
+    if( Shopify.Checkout.step === "shipping_method") {
+      $(".anyflexbox .step__footer").before(html);
+    }
+    $("input#checkbox-shipping").click(function(){
+      if($(this).is(":checked")) {
+        jQuery.post('shopifyURL/cart/add.js', {
+          items: [{quantity: 1, id: shipping_product}]
+        },
+        function(){
+          setCookie("shippingupsell", "",1);
+          window.location='/checkout?step=shipping_method';
+        }); 
+      } else {
+        jQuery.post('/cart/update.js',
+          "updates["+shipping_product+"]=0",
+          function(){
+            setCookie("shippingupsell", "remove",1);
+            window.location='/checkout?step=shipping_method';
+          });
+      }
+    });
+    tippy('#tooltip_for_inspolicy', {
+      content: 'A Hassle free, NO questions asked protection against loss, damaged and stolen packages.',
+      allowHTML: true,
+    });
+  //}
+});
+</script>
+
+<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="https://unpkg.com/tippy.js@6"></script>
+<style>
+  /* The container */
+  .container-shipping-checkout {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 22px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Hide the browser's default checkbox */
+  .container-shipping-checkout input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  /* Create a custom checkbox */
+  .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    background-color: #eee;
+    border: 1px solid black;
+    border-radius: 20px;
+  }
+
+  /* On mouse-over, add a grey background color */
+  .container-shipping-checkout:hover input ~ .checkmark {
+    background-color: #ccc;
+  }
+
+  /* When the checkbox is checked, add a blue background */
+  .container-shipping-checkout input:checked ~ .checkmark {
+    background-color: #2196F3;
+  }
+
+  /* Create the checkmark/indicator (hidden when not checked) */
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+
+  /* Show the checkmark when checked */
+  .container-shipping-checkout input:checked ~ .checkmark:after {
+    display: block;
+  }
+
+  /* Style the checkmark/indicator */
+  .container-shipping-checkout .checkmark:after {
+    left: 9px;
+    top: 5px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+  }
+  .shipping-upsell-col-2 span {
+    display: block;
+    font-weight: normal;
+    font-size: 12px !important;
+  }
+
+  .shipping-upsell-col-2 {
+    font-size: 15px;
+    text-indent: 6px;
+    font-weight: bolder;
+  }
+  .shipping-upsell-row {
+    display: inline-flex;
+    border: 1px solid;
+    padding: 15px;
+    margin: 3% 0px 0px 6px;
+    border-radius: 5px;
+  }  
+  .shipping-upsell-col-3 {
+    padding-left: 13px;
+    padding-top: 9px;
+  }
+</style>
